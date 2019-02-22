@@ -16,6 +16,26 @@ def filter_instances(project):
 
     return instances
 
+def manage_instances(project, state):
+
+    instances = filter_instances(project)
+
+    for i in instances:
+        print(str(state) + " {0}...".format(i.id))
+        try:
+            if state == "Start":
+                i.start()
+            elif state == "Stop":
+                i.stop()
+            elif state == "Reboot":
+                i.stop()
+                i.wait_until_stopped()
+                i.start()
+
+        except botocore.exceptions.ClientError as e:
+            print(" Cloud not " + state + " {0}.".format(i.id) + " " + str(e))
+            continue
+
 def has_pending_snapshot(volume):
     snapshots = list(volume.snapshots.all())
     return snapshots and snapshots[0].state == "pending"
@@ -136,16 +156,18 @@ def list_instances(project):
 @click.option("--project", default=None, help="Only instances for project")
 def stop_instances(project):
     "Stop EC2 instances"
-    
     instances = filter_instances(project)
     
-    for i in instances:
-        print("Stoping {0}...".format(i.id))
-        try:
-            i.stop()
-        except botocore.exceptions.ClientError as e:
-            print(" Cloud not stop {0}.".format(i.id) + " " +str(e))
-            continue
+    manage_instances(project, "Stop")
+
+    return
+
+@instances.command("reboot")
+@click.option("--project", default=None, help="Only instances for project")
+def reboot_instances(project):
+    "Reboot EC2 instances"
+
+    manage_instances(project, "Reboot")
 
     return
 
@@ -154,15 +176,7 @@ def stop_instances(project):
 def start_instances(project):
     "Start EC2 instances"
     
-    instances = filter_instances(project)
-    
-    for i in instances:
-        print("Start {0}...".format(i.id))
-        try:
-            i.start()
-        except botocore.exceptions.ClientError as e:
-            print(" Cloud not start {0}.".format(i.id) + " " + str(e))
-            continue
+    manage_instances(project, "Start")
     
     return
 
